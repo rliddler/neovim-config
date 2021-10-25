@@ -10,14 +10,18 @@ call plug#begin('~/.vim/plugged')
 Plug 'itchyny/lightline.vim' 		      " Light touch status line
 Plug 'jlanzarotta/bufexplorer'        " Show a sortable list of open buffers
 Plug 'scrooloose/nerdtree'            " Visualise the project directory
-Plug 'scrooloose/nerdcommenter'       " Handy commenting!
+Plug 'tpope/vim-commentary'           " Alternative commenting to try out
 Plug 'mhinz/vim-startify'             " A start screen!
 Plug 'kyazdani42/nvim-web-devicons'   " Fancy icons using patched font
 Plug 'ntpeters/vim-better-whitespace' " Strip away whitespace from modified lines
 Plug 'tpope/vim-endwise'              " Adds ends to ruby for you because you're lazy
 Plug 'tpope/vim-fugitive'             " Git wrapper to help with lightline status
+Plug 'tpope/vim-projectionist'        " Navigate to test files
 
 Plug 'mileszs/ack.vim'              " fallback to old searching
+
+" Language specific things
+Plug 'google/vim-jsonnet'               " jsonnet
 
 " Telescope search related
 Plug 'nvim-lua/popup.nvim'
@@ -33,6 +37,7 @@ Plug 'sainnhe/sonokai'
 
 " Language server via COC
 Plug 'neoclide/coc.nvim', {'branch': 'release'}
+
 
 call plug#end()
 filetype plugin indent on
@@ -88,9 +93,9 @@ syn sync fromstart
 let mapleader = "," 			" setup the leader key
 
 " Telescope searching
-nnoremap <leader>ff <cmd>Telescope git_files theme=get_dropdown<cr>
-nnoremap <leader>fa <cmd>Telescope find_files theme=get_dropdown<cr>
-nnoremap <leader>fg <cmd>Telescope live_grep theme=get_dropdown<cr>
+nnoremap <leader>ff :lua require'telescope.builtin'.git_files(require('telescope.themes').get_dropdown({layout_config={width=0.8}}))<cr>
+nnoremap <leader>fa :lua require'telescope.builtin'.find_files(require('telescope.themes').get_dropdown({layout_config={width=0.8}}))<cr>
+nnoremap <leader>fg :lua require'telescope.builtin'.live_grep(require('telescope.themes').get_dropdown({layout_config={width=0.8}}))<cr>
 nnoremap <leader>fb <cmd>Telescope buffers theme=get_dropdown<cr>
 nnoremap <leader>fh <cmd>Telescope help_tags theme=get_dropdown<cr>
 nnoremap <leader>fq <cmd>Telescope quickfix<cr>
@@ -174,7 +179,10 @@ set mouse=a
 set laststatus=2
 set fdm=marker
 set backspace=start,indent,eol
-set textwidth=100
+
+set textwidth=90                        " Wrap at 90 because paysvc is restrictive
+set colorcolumn=90                      " Colour that column so we know if we're close
+set fo+=t                               " required to be in format options whilst editing
 
 set mousehide                           " Hide the mouse cursor when typing
 set hidden                              " Allow buffer switching without saving
@@ -334,8 +342,17 @@ set wildignore+=node_modules/*                                               " I
 set wildignore+=*.swp,*.swo,*~,._*                                           " Disable temp and backup files
 set wildignore+=_build/*                                                     " Ignore elixirs build folder
 
-:lua require'nvim-web-devicons'.setup {}
 
+" -----------------------------------
+" Setup Projectionist switching to test files
+" -----------------------------------
+let g:projectionist_heuristics ={
+      \  "spec/*.rb": {
+      \     "app/*.rb":       {"alternate": "spec/{}_spec.rb",         "type": "source"},
+      \     "lib/*.rb":       {"alternate": "spec/{}_spec.rb",         "type": "source"},
+      \     "spec/*_spec.rb": {"alternate": ["app/{}.rb","lib/{}.rb"], "type": "test"}
+      \  }
+      \}
 
 " -----------------------------------
 " Treesitter enabling of highlights
@@ -355,20 +372,20 @@ EOF
 
 
 " -----------------------------------
-" Treesitter enabling of highlights
+" Telescope stuff
 " -----------------------------------
+:lua require'nvim-web-devicons'.setup {}
+
 lua <<EOF
 require('telescope').setup{
-  defaults = {
-    pickers = {
-      buffers = {
-        mappings = {
-          i = {
-            ['<C-w>'] = require("telescope.actions").smart_send_to_qflist,
-            },
+  pickers = {
+    buffers = {
+      mappings = {
+        i = {
+          ['<C-w>'] = require("telescope.actions").smart_send_to_qflist,
           },
         },
       },
-    }
+    },
   }
 EOF
